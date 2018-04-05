@@ -24,8 +24,8 @@ static float vertices[] = {
 };
 
 static float vsQuad[] = {
-  -1.0f, -1.0f, 0.0f,
    1.0f, -1.0f, 0.0f,
+  -1.0f, -1.0f, 0.0f,
    1.0f,  1.0f, 0.0f,
   -1.0f,  1.0f, 0.0f,
 };
@@ -34,10 +34,12 @@ struct VertexBuffer {
   unsigned int vbo;
   unsigned int vao;
   size_t size;
+  GLenum mode;
 
   VertexBuffer() {}
 
-  VertexBuffer(float* begin, float* end) {
+  VertexBuffer(float* begin, float* end, GLenum mode_) {
+    mode = mode_;
     size = end - begin;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -64,7 +66,7 @@ struct VertexBuffer {
 
   void draw() const {
     glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLES, 0, size);
+    glDrawArrays(mode, 0, size);
   }
 };
 
@@ -104,58 +106,57 @@ static VertexBuffer vbQuad;
 static const char* vertexShaderSource = R"(
 #version 420
 layout (location = 0) in vec3 aPos;
+out vec2 uv;
 
 void main()
 {
     gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    uv = aPos.xy;
 }
 )";
 
 static const char* fragmentShaderSource = R"(
 #version 420
 #extension GL_ARB_explicit_uniform_location : enable
+in vec2 uv;
 out vec4 FragColor;
+
 layout (location = 0) uniform float iTime;
 
-float rand(vec2 co) {
-  return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+uint hash(uint x) {
+  x = x ^ uint(61) ^ (x >> 16);
+  x *= uint(9);
+  x = x ^ (x >> 4);
+  x *= 0x27d4eb2d;
+  x = x ^ (x >> 15);
+  return x;
 }
 
-float noise(float prev, in vec2 fragCoord) {
-  float noiseS = sin(8.4 * fragCoord.y) / 2.0;
-  return prev * 0.9 + 0.1 * noiseS;
+uint merge(uint x, uint y) {
+  return hash(x ^ (y * 65537));
 }
 
-vec4 vhs(in vec2 fragCoord) {
-  vec4 baseBase = vec4(0.2, 0.3, 0.8, 1.0);
-
-  vec2 base2 = round(0.5 + 0.5 * sin(sin(iTime) * cos(iTime) + 0.9 * cos(fragCoord)));
-  float baseColor = base2.x + base2.y;
-  vec4 base4 = vec4(vec3(baseColor), 1.0);
-  vec4 base = base4 * vec4(0.50, 0.49, 0.20, 1.0);
-
-  float y = 0.1 * fragCoord.y + 41.0 * iTime;
-  float n = pow(sin(y * 0.1) * 0.6 + 0.6, 5.0);
-  vec4 stripes = vec4(0.9 * n, 0.3 * n, 0.97 * n, 1.0);
-
-  float noize = pow(rand(iTime / 5000.0 + fragCoord), 6.0);
-  noize = noise(noize, fragCoord);
-  noize = noise(noize, fragCoord);
-  noize = noise(noize, fragCoord);
-  noize = noise(noize, fragCoord);
-  noize = noise(noize, fragCoord);
-  noize = noise(noize, fragCoord);
-  noize = noise(noize, fragCoord);
-
-  float noize2 = noise(noize, fragCoord);
-
-  return (0.9 * noize2 * stripes) + 0.3 * noize;
+float uintToFloat(uint seed) {
+  return seed * (1.0f / 4294967296.0f);
 }
 
+float vhs() {
+  uint h = 17;
+  h = merge(h, floatBitsToUint(iTime));
+  h = merge(h, floatBitsToUint(uv.x));
+  h = merge(h, floatBitsToUint(uv.y));
+  highp float p = uintToFloat(h);
+  float w = sin(uv.y * 3.0 + iTime * 2) * 0.2 + 0.8;
+  p = w * p + (1.0 - w);
+  float k = 0.8 + 0.2 * fract(uv.y * 72);
+  return p * k;
+}
 
 void main() {
-    FragColor = 0.2 * vec4(1.0f, 1.0f, 0.1f, 1.0f);
-    FragColor += vhs(gl_FragCoord.xy);
+    vec3 color = vec3(0.8f, 0.8f, 0.8f);
+    color *= vhs();
+    color *= vec3(0.97, 0.9, 1.0);
+    FragColor = vec4(color.rgb, 1.0f);
 }
 )";
 
@@ -163,8 +164,8 @@ void main() {
 
 void setup() {
   quadProgram = Program(vertexShaderSource, fragmentShaderSource);
-  vbTriangle = VertexBuffer(std::begin(vertices), std::end(vertices));
-  vbQuad = VertexBuffer(std::begin(vsQuad), std::end(vsQuad));
+  vbTriangle = VertexBuffer(std::begin(vertices), std::end(vertices), GL_TRIANGLE_STRIP);
+  vbQuad = VertexBuffer(std::begin(vsQuad), std::end(vsQuad), GL_TRIANGLE_STRIP);
 }
 
 float iTime = 0.0;
@@ -173,6 +174,7 @@ void render() {
   glClear(GL_COLOR_BUFFER_BIT);
   quadProgram.setupDraw(iTime);
   vbTriangle.draw();
+  vbQuad.draw();
   iTime += 0.01;
 }
 
@@ -214,6 +216,9 @@ int main(int argc, char** argv) {
   if (argc == 2 && !strcmp(argv[1], "--hidpi")) scale = 2;
   glfwGetFramebufferSize(window, &width, &height);
   glViewport(0, 0, width * scale, height * scale);
+
+  // Enable vsync. I think.
+  glfwSwapInterval(1);
 
   setup();
 
