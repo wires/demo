@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #define GL_GLEXT_PROTOTYPES 1
 #define GL3_PROTOTYPES 1
@@ -109,6 +110,21 @@ int main(int argc, char** argv) {
 
   glDebugMessageCallback(reportError, nullptr);
   glEnable(GL_DEBUG_OUTPUT);
+
+  // Set viewport size to window size * scaling, to fix HiDPI. The framebuffer
+  // size should be the right size, adjusted for scaling, but unfortunately it
+  // is not on my system, the size returned by glfwGetFramebufferSize and
+  // glfwGetWindowSize are the same, even on a HiDPI display.
+
+  // HACK: Note that GetFramebufferSize should return the device pixels, not
+  // screen coordinates, so this *should* work for HiDPI, but it does not. See
+  // also https://github.com/glfw/glfw/issues/1168. So we just scale if provided
+  // as a command line flag.
+  int width, height;
+  int scale = 1;
+  if (argc == 2 && !strcmp(argv[1], "--hidpi")) scale = 2;
+  glfwGetFramebufferSize(window, &width, &height);
+  glViewport(0, 0, width * scale, height * scale);
 
   setup();
 
