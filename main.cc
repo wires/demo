@@ -131,13 +131,9 @@ void reportError(GLenum, GLenum, GLuint, GLenum severity, GLsizei length, const 
   if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM) abort();
 }
 
-void kutzooi(int argc, const char *error) {
-  printf("%s", error);
-}
 int main(int argc, char** argv) {
   GLFWwindow* window;
 
-  glfwSetErrorCallback(kutzooi);
   if (!glfwInit()) return -2;
 
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -146,10 +142,7 @@ int main(int argc, char** argv) {
 
   window = glfwCreateWindow(1280, 720, "Demo", nullptr, nullptr);
 
-  if (!window) {
-    glfwTerminate();
-    return -3;
-  }
+  if (!window) return -1;
 
   glfwMakeContextCurrent(window);
 
@@ -180,6 +173,5 @@ int main(int argc, char** argv) {
     glfwPollEvents();
   }
 
-  glfwTerminate();
   return 0;
 }
