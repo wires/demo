@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
 
   if (!glfwInit()) return -1;
 
-  window = glfwCreateWindow(640, 480, "Demo", nullptr, nullptr);
+  window = glfwCreateWindow(1280, 720, "Demo", nullptr, nullptr);
 
   if (!window) {
     glfwTerminate();
