@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <GLFW/glfw3.h>
 
 const char * shader = R"(
 
@@ -6,7 +7,27 @@ const char * shader = R"(
   }
 
   )";
+
 int main(int argc, char** argv) {
-  printf("DEMO\n");
+  GLFWwindow* window;
+
+  if (!glfwInit()) return -1;
+
+  window = glfwCreateWindow(640, 480, "Demo", nullptr, nullptr);
+
+  if (!window) {
+    glfwTerminate();
+    return -1;
+  }
+
+  glfwMakeContextCurrent(window);
+
+  while (!glfwWindowShouldClose(window)) {
+    glClear(GL_COLOR_BUFFER_BIT);
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+  }
+
+  glfwTerminate();
   return 0;
 }

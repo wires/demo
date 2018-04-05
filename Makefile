@@ -1,8 +1,8 @@
-CXXFLAGS=-Oz -m32 -fno-stack-protector -ffunction-sections -fdata-sections -Wl,--gc-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-math-errno -ffast-math -fno-unroll-loops -fmerge-all-constants -fno-ident -ffast-math -Wl,-z,norelno -Wl,--hash-style=gnu -Wl,--build-id=none -fno-rtti -fno-exceptions -fomit-frame-pointer -fno-unroll-loops -fno-profile-use
+CXXFLAGS=-Oz -fno-stack-protector -ffunction-sections -fdata-sections -Wl,--gc-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-math-errno -ffast-math -fno-unroll-loops -fmerge-all-constants -fno-ident -ffast-math  -Wl,--hash-style=gnu -Wl,--build-id=none -fno-rtti -fno-exceptions -fomit-frame-pointer -fno-unroll-loops -fno-profile-use
 
 .PHONY: demo
 demo: main.cc
-	clang++ ${CXXFLAGS} main.cc -o demo
+	clang++ `pkg-config --cflags --libs glfw3 gl` ${CXXFLAGS} main.cc -o demo
 	strip -S \
 	  --strip-unneeded \
 	  --remove-section=.note.gnu.gold-version \
