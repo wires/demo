@@ -1,7 +1,10 @@
+CXXFLAGS=-Oz -fno-rtti -fno-exceptions -fomit-frame-pointer -fno-unroll-loops
+
+.PHONY: demo
 demo: main.cc
-	clang++ -Oz main.cc -o demo
+	clang++ ${CXXFLAGS} main.cc -o demo
 	strip demo
-	du -b demo | awk '$$1 > 4096 { exit 1 }'
+	du -b demo | awk '{ print } $$1 > 4096 { exit 1 }'
 
 .PHONY: clean
 clean:
