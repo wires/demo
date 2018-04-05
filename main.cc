@@ -68,10 +68,36 @@ struct VertexBuffer {
   }
 };
 
-static unsigned int vertexShader;
-static unsigned int fragmentShader;
-static unsigned int shaderProgram;
 
+struct Program {
+  unsigned int vertexShader;
+  unsigned int fragmentShader;
+  unsigned int shaderProgram;
+ 
+  Program() {}
+  Program(const char* vertexShaderSource, const char* fragmentShaderSource) {
+    vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+    glCompileShader(vertexShader);
+
+    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+    glCompileShader(fragmentShader);
+
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+  }
+
+  void setupDraw(float iTime) const {
+    glUseProgram(shaderProgram);
+    glUniform1f(0, iTime);
+  }
+};
+
+
+static Program quadProgram;
 static VertexBuffer vbTriangle;
 static VertexBuffer vbQuad;
 
@@ -133,20 +159,10 @@ void main() {
 }
 )";
 
+
+
 void setup() {
-  vertexShader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
-  glCompileShader(vertexShader);
-
-  fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
-  glCompileShader(fragmentShader);
-
-  shaderProgram = glCreateProgram();
-  glAttachShader(shaderProgram, vertexShader);
-  glAttachShader(shaderProgram, fragmentShader);
-  glLinkProgram(shaderProgram);
-
+  quadProgram = Program(vertexShaderSource, fragmentShaderSource);
   vbTriangle = VertexBuffer(std::begin(vertices), std::end(vertices));
   vbQuad = VertexBuffer(std::begin(vsQuad), std::end(vsQuad));
 }
@@ -155,9 +171,9 @@ float iTime = 0.0;
 
 void render() {
   glClear(GL_COLOR_BUFFER_BIT);
-  glUseProgram(shaderProgram);
-  glUniform1f(0, iTime);
+  quadProgram.setupDraw(iTime);
   vbTriangle.draw();
+  iTime += 0.01;
 }
 
 void reportError(GLenum, GLenum, GLuint, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
