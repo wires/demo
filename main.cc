@@ -1,3 +1,10 @@
+// Attempt at demosceney things
+// Copyright 2018 Arian van Putten, Radek Slupik, Ruud van Asseldonk
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License version 3. A copy
+// of the License is available in the root of the repository.
+
 #include <cstdio>
 #include <cstdlib>
 
