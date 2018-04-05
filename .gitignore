@@ -1,0 +1,6 @@
+# Output file
+/demo
+
+# Vim
+*.swo
+*.swp
