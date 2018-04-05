@@ -10,7 +10,7 @@ float noise(float prev, in vec2 fragCoord) {
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   vec4 baseBase = vec4(0.2, 0.3, 0.8, 1.0);
 
-  vec2 base2 = round(0.5 + 0.5 * sin(6.2 * fragCoord));
+  vec2 base2 = round(0.5 + 0.5 * sin(sin(iTime) * cos(iTime) + 0.9 * cos(fragCoord)));
   float baseColor = base2.x + base2.y;
   vec4 base4 = vec4(vec3(baseColor), 1.0);
   vec4 base = base4 * vec4(0.50, 0.49, 0.20, 1.0);
