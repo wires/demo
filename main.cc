@@ -5,10 +5,11 @@
 // it under the terms of the GNU General Public License version 3. A copy
 // of the License is available in the root of the repository.
 
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <chrono>
+#include <memory>
 
 #define GL_GLEXT_PROTOTYPES 1
 #define GL3_PROTOTYPES 1
@@ -22,11 +23,57 @@ static float vertices[] = {
    0.0f,  0.5f, 0.0f
 };
 
-static unsigned int vbo;
-static unsigned int vao;
+static float vsQuad[] = {
+  -1.0f, -1.0f, 0.0f,
+   1.0f, -1.0f, 0.0f,
+   1.0f,  1.0f, 0.0f,
+  -1.0f,  1.0f, 0.0f,
+};
+
+struct VertexBuffer {
+  unsigned int vbo;
+  unsigned int vao;
+  size_t size;
+
+  VertexBuffer() {}
+
+  VertexBuffer(float* begin, float* end) {
+    size = end - begin;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, size, begin, GL_STATIC_DRAW);
+
+    glGenVertexArrays(1, &vao);
+    printf("vbo: %i vao: %i size: %zu\n", vbo, vao, size);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, size * sizeof(float), begin, GL_STATIC_DRAW);
+
+    glBindVertexArray(vao);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glVertexAttribPointer(
+      0, // Attribute index
+      3, // Elements per vertex
+      GL_FLOAT,
+      GL_FALSE, // Normalized
+      0, // Stride: tightly packed
+      nullptr
+    );
+  }
+
+  void draw() const {
+    glBindVertexArray(vao);
+    glDrawArrays(GL_TRIANGLES, 0, size);
+  }
+};
+
 static unsigned int vertexShader;
 static unsigned int fragmentShader;
 static unsigned int shaderProgram;
+
+static VertexBuffer vbTriangle;
+static VertexBuffer vbQuad;
 
 static const char* vertexShaderSource = R"(
 #version 420
@@ -87,12 +134,6 @@ void main() {
 )";
 
 void setup() {
-  glGenBuffers(1, &vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-  glGenVertexArrays(1, &vao);
-
   vertexShader = glCreateShader(GL_VERTEX_SHADER);
   glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
   glCompileShader(vertexShader);
@@ -106,23 +147,17 @@ void setup() {
   glAttachShader(shaderProgram, fragmentShader);
   glLinkProgram(shaderProgram);
 
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-  glBindVertexArray(vao);
-  glEnableVertexAttribArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+  vbTriangle = VertexBuffer(std::begin(vertices), std::end(vertices));
+  vbQuad = VertexBuffer(std::begin(vsQuad), std::end(vsQuad));
 }
 
 float iTime = 0.0;
+
 void render() {
   glClear(GL_COLOR_BUFFER_BIT);
   glUseProgram(shaderProgram);
   glUniform1f(0, iTime);
-  glBindVertexArray(vao);
-  glDrawArrays(GL_TRIANGLES, 0, 3);
+  vbTriangle.draw();
 }
 
 void reportError(GLenum, GLenum, GLuint, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
