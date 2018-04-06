@@ -128,12 +128,16 @@ struct Program {
   }
 };
 
-
 static Program pQuad;
 static Program pSun;
+static Program pScreen;
 static VertexBuffer vbTriangle;
 static VertexBuffer vbQuad;
 static VertexBuffer vbSquare;
+
+static unsigned int depthbuffer;
+static unsigned int framebuffer;
+static unsigned int renderTexture;
 
 static const char* vertexShaderUv = R"(
 #version 420
@@ -172,6 +176,21 @@ out vec4 FragColor;
 
 layout (location = 0) uniform float iTime;
 
+void main() {
+    vec3 color = vec3(0.8f, 0.8f, 0.8f);
+    FragColor = vec4(color.rgb, 1.0f);
+}
+)";
+
+static const char* fragmentShaderScreen = R"(
+#version 420
+#extension GL_ARB_explicit_uniform_location : enable
+in vec2 uv;
+out vec4 FragColor;
+
+layout (location = 0) uniform float iTime;
+layout (location = 1) uniform sampler2D screenTexture;
+
 uint hash(uint x) {
   x = x ^ uint(61) ^ (x >> 16);
   x *= uint(9);
@@ -202,16 +221,35 @@ float vhs() {
 }
 
 void main() {
-    vec3 color = vec3(0.8f, 0.8f, 0.8f);
-    color *= vhs();
-    color *= vec3(0.97, 0.9, 1.0);
-    FragColor = vec4(color.rgb, 1.0f);
+  vec3 color = texture(screenTexture, uv * 0.5 + vec2(0.5)).rgb;
+  color *= vhs();
+  color *= vec3(0.97, 0.9, 1.0);
+  FragColor = vec4(color, 1.0);
 }
 )";
 
-void setup() {
+void setup(int width, int height) {
   pQuad = Program(vertexShaderUv, fragmentShaderQuad);
   pSun = Program(vertexShaderUv, fragmentShaderSun);
+  pScreen = Program(vertexShaderUv, fragmentShaderScreen);
+
+  glGenFramebuffers(1, &framebuffer);
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+  glGenTextures(1, &renderTexture);
+  glBindTexture(GL_TEXTURE_2D, renderTexture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+  glGenRenderbuffers(1, &depthbuffer);
+  glBindRenderbuffer(GL_RENDERBUFFER, depthbuffer);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthbuffer);
+
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTexture, 0);
+  GLenum drawbuffers[1] = {GL_COLOR_ATTACHMENT0};
+  glDrawBuffers(1, drawbuffers);
 
   // Make the square really a square, correct for aspect ratio.
   const float aspectRatio = 9.0f / 16.0;
@@ -241,14 +279,20 @@ void setup() {
 
 float iTime = 0.0;
 
-void render() {
+void render(int width, int height) {
+  // Render to texture.
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+  glViewport(0, 0, width, height);
   glClear(GL_COLOR_BUFFER_BIT);
-
-  pQuad.setupDraw(iTime);
-  vbQuad.draw();
 
   pSun.setupDraw(0.0f);
   vbSquare.draw();
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, width, height);
+
+  pScreen.setupDraw(iTime);
+  vbQuad.draw();
 }
 
 void reportError(GLenum, GLenum, GLuint, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
@@ -285,18 +329,19 @@ int main(int argc, char** argv) {
   // also https://github.com/glfw/glfw/issues/1168. So we just scale if provided
   // as a command line flag.
   int width, height;
-  int scale = 1;
-  if (argc == 2 && !strcmp(argv[1], "--hidpi")) scale = 2;
   glfwGetFramebufferSize(window, &width, &height);
-  glViewport(0, 0, width * scale, height * scale);
+  if (argc == 2 && !strcmp(argv[1], "--hidpi")) {
+    width *= 2;
+    height *= 2;
+  }
 
   // Enable vsync. I think.
   glfwSwapInterval(1);
 
-  setup();
+  setup(width, height);
 
   while (!glfwWindowShouldClose(window)) {
-    render();
+    render(width, height);
     iTime += 0.01;
     glfwSwapBuffers(window);
     glfwPollEvents();
