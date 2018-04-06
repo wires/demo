@@ -24,11 +24,16 @@ static float vertices[] = {
 };
 
 static float vsQuad[] = {
-   1.0f, -1.0f, 0.0f,
-  -1.0f, -1.0f, 0.0f,
-   1.0f,  1.0f, 0.0f,
-  -1.0f,  1.0f, 0.0f,
+   1.0f, -1.0f, 1.0f,
+   1.0f,  1.0f, 1.0f,
+  -1.0f, -1.0f, 1.0f,
+  -1.0f,  1.0f, 1.0f,
 };
+
+
+
+
+
 
 struct VertexBuffer {
   unsigned int vbo;
@@ -100,18 +105,35 @@ struct Program {
 
 
 static Program quadProgram;
+static Program gridProgram;
 static VertexBuffer vbTriangle;
 static VertexBuffer vbQuad;
 
+
 static const char* vertexShaderSource = R"(
 #version 420
+#extension GL_ARB_explicit_uniform_location : enable
 layout (location = 0) in vec3 aPos;
+layout (location = 0) uniform float iTime;
 out vec2 uv;
+
 
 void main()
 {
-    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-    uv = aPos.xy;
+  float a = -1.5;
+  mat4 rot = mat4(1.0,0.0,0.0,0.0,
+                  0.0,cos(a),-sin(a),0.0,
+                  0.0,sin(a), cos(a),0.0,
+                  0.0,0.0,0.0,1.0);
+
+  mat4 trans = mat4(1.0,0.0,0.0,0.0,
+                    0.0,1.0,0.0,0.0,
+                    0.0,0.0,1.0,0.0,
+                    0.0,5.0 *-fract(iTime) + 4.0,0.0,1.0);
+  vec4 pos = rot * trans * vec4(aPos, 1.0);
+
+  gl_Position = vec4(pos.xy,  1-pos.z, pos.z);
+  uv = aPos.xy;
 }
 )";
 
@@ -163,6 +185,7 @@ void main() {
 
 
 void setup() {
+  glEnable(GL_DEPTH_TEST);
   quadProgram = Program(vertexShaderSource, fragmentShaderSource);
   vbTriangle = VertexBuffer(std::begin(vertices), std::end(vertices), GL_TRIANGLE_STRIP);
   vbQuad = VertexBuffer(std::begin(vsQuad), std::end(vsQuad), GL_TRIANGLE_STRIP);
@@ -172,6 +195,7 @@ float iTime = 0.0;
 
 void render() {
   glClear(GL_COLOR_BUFFER_BIT);
+  glClear(GL_DEPTH_BUFFER_BIT);
   quadProgram.setupDraw(iTime);
   vbTriangle.draw();
   vbQuad.draw();
