@@ -24,24 +24,24 @@ static float vertices[] = {
 };
 
 static float vsQuad[] = {
-   1.0f, -1.0f, 0.0f,
-  -1.0f, -1.0f, 0.0f,
-   1.0f,  1.0f, 0.0f,
-  -1.0f,  1.0f, 0.0f,
+   1.0f, -1.0f, 1.0f,
+   1.0f,  1.0f, 1.0f,
+  -1.0f, -1.0f, 1.0f,
+  -1.0f,  1.0f, 1.0f,
 };
 
 static float vsUnitUvs[] = {
    1.0f, -1.0f,
-  -1.0f, -1.0f,
    1.0f,  1.0f,
+  -1.0f, -1.0f,
   -1.0f,  1.0f,
 };
 
 static float vsSquare[] = {
-   1.0f, -1.0f, 0.0f,
-  -1.0f, -1.0f, 0.0f,
-   1.0f,  1.0f, 0.0f,
-  -1.0f,  1.0f, 0.0f,
+   1.0f, -1.0f, 1.0f,
+   1.0f,  1.0f, 1.0f,
+  -1.0f, -1.0f, 1.0f,
+  -1.0f,  1.0f, 1.0f,
 };
 
 struct VertexBuffer {
@@ -131,7 +131,6 @@ struct Program {
 static Program pQuad;
 static Program pSun;
 static Program pScreen;
-static VertexBuffer vbTriangle;
 static VertexBuffer vbQuad;
 static VertexBuffer vbSquare;
 
@@ -139,16 +138,48 @@ static unsigned int depthbuffer;
 static unsigned int framebuffer;
 static unsigned int renderTexture;
 
-static const char* vertexShaderUv = R"(
+static const char* vertexShaderRoad = R"(
 #version 420
+#extension GL_ARB_explicit_uniform_location : enable
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aUv;
+layout (location = 0) uniform float iTime;
 
 out vec2 uv;
 
+
 void main()
 {
-    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+  float a = -1.5;
+  mat4 rot = mat4(1.0,0.0,0.0,0.0,
+                  0.0,cos(a),-sin(a),0.0,
+                  0.0,sin(a), cos(a),0.0,
+                  0.0,0.0,0.0,1.0);
+
+  mat4 trans = mat4(1.0,0.0,0.0,0.0,
+                    0.0,1.0,0.0,0.0,
+                    0.0,0.0,1.0,0.0,
+                    0.0,5.0 *-fract(iTime) + 4.0,0.0,1.0);
+  vec4 pos = rot * trans * vec4(aPos, 1.0);
+
+  gl_Position = vec4(pos.xy,  1-pos.z, pos.z);
+  uv = aUv;
+}
+)";
+
+static const char* vertexShaderUv = R"(
+#version 420
+#extension GL_ARB_explicit_uniform_location : enable
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aUv;
+layout (location = 0) uniform float iTime;
+
+out vec2 uv;
+
+
+void main()
+{
+    gl_Position = vec4(aPos.xyz, 1.0);
     uv = aUv;
 }
 )";
@@ -230,7 +261,7 @@ void main() {
 )";
 
 void setup(int width, int height) {
-  pQuad = Program(vertexShaderUv, fragmentShaderQuad);
+  pQuad = Program(vertexShaderRoad, fragmentShaderQuad);
   pSun = Program(vertexShaderUv, fragmentShaderSun);
   pScreen = Program(vertexShaderUv, fragmentShaderScreen);
 
@@ -261,11 +292,6 @@ void setup(int width, int height) {
   // Make the square a bit smaller.
   for (float& x : vsSquare) x *= 0.7;
 
-  vbTriangle = VertexBuffer(
-    std::begin(vertices), std::end(vertices),
-    std::begin(vertices), std::end(vertices),
-    GL_TRIANGLE_STRIP
-  );
   vbQuad = VertexBuffer(
     std::begin(vsQuad), std::end(vsQuad),
     std::begin(vsUnitUvs), std::end(vsUnitUvs),
@@ -284,12 +310,17 @@ void render(int width, int height) {
   // Render to texture.
   glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
   glViewport(0, 0, width, height);
-  glClear(GL_COLOR_BUFFER_BIT);
+  glEnable(GL_DEPTH_TEST);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  pQuad.setupDraw(iTime);
+  vbQuad.draw();
 
   pSun.setupDraw(0.0f);
   vbSquare.draw();
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glDisable(GL_DEPTH_TEST);
   glViewport(0, 0, width, height);
 
   pScreen.setupDraw(iTime);
