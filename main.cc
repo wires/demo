@@ -100,15 +100,42 @@ struct VertexBuffer {
   }
 };
 
-static unsigned int vertexShader;
-static unsigned int fragmentShader;
-static unsigned int shaderProgram;
 
+struct Program {
+  unsigned int vertexShader;
+  unsigned int fragmentShader;
+  unsigned int shaderProgram;
+ 
+  Program() {}
+  Program(const char* vertexShaderSource, const char* fragmentShaderSource) {
+    vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+    glCompileShader(vertexShader);
+
+    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+    glCompileShader(fragmentShader);
+
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+  }
+
+  void setupDraw(float iTime) const {
+    glUseProgram(shaderProgram);
+    glUniform1f(0, iTime);
+  }
+};
+
+
+static Program pQuad;
+static Program pSun;
 static VertexBuffer vbTriangle;
 static VertexBuffer vbQuad;
 static VertexBuffer vbSquare;
 
-static const char* vertexShaderSource = R"(
+static const char* vertexShaderUv = R"(
 #version 420
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aUv;
@@ -122,11 +149,13 @@ void main()
 }
 )";
 
-static const char* fragmentShaderSource = R"(
+static const char* fragmentShaderSun = R"(
 #version 420
 #extension GL_ARB_explicit_uniform_location : enable
 in vec2 uv;
 out vec4 FragColor;
+
+layout (location = 0) uniform float iTime;
 
 void main() {
   float r = dot(uv, uv);
@@ -135,19 +164,54 @@ void main() {
 }
 )";
 
+static const char* fragmentShaderQuad = R"(
+#version 420
+#extension GL_ARB_explicit_uniform_location : enable
+in vec2 uv;
+out vec4 FragColor;
+
+layout (location = 0) uniform float iTime;
+
+uint hash(uint x) {
+  x = x ^ uint(61) ^ (x >> 16);
+  x *= uint(9);
+  x = x ^ (x >> 4);
+  x *= 0x27d4eb2d;
+  x = x ^ (x >> 15);
+  return x;
+}
+
+uint merge(uint x, uint y) {
+  return hash(x ^ (y * 65537));
+}
+
+float uintToFloat(uint seed) {
+  return seed * (1.0f / 4294967296.0f);
+}
+
+float vhs() {
+  uint h = 17;
+  h = merge(h, floatBitsToUint(iTime));
+  h = merge(h, floatBitsToUint(uv.x));
+  h = merge(h, floatBitsToUint(uv.y));
+  float p = uintToFloat(h);
+  float w = sin(uv.y * 3.0 + iTime * 2) * 0.2 + 0.8;
+  p = w * p + (1.0 - w);
+  float k = 0.8 + 0.2 * fract(uv.y * 144);
+  return p * k;
+}
+
+void main() {
+    vec3 color = vec3(0.8f, 0.8f, 0.8f);
+    color *= vhs();
+    color *= vec3(0.97, 0.9, 1.0);
+    FragColor = vec4(color.rgb, 1.0f);
+}
+)";
+
 void setup() {
-  vertexShader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
-  glCompileShader(vertexShader);
-
-  fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
-  glCompileShader(fragmentShader);
-
-  shaderProgram = glCreateProgram();
-  glAttachShader(shaderProgram, vertexShader);
-  glAttachShader(shaderProgram, fragmentShader);
-  glLinkProgram(shaderProgram);
+  pQuad = Program(vertexShaderUv, fragmentShaderQuad);
+  pSun = Program(vertexShaderUv, fragmentShaderSun);
 
   // Make the square really a square, correct for aspect ratio.
   const float aspectRatio = 9.0f / 16.0;
@@ -179,11 +243,12 @@ float iTime = 0.0;
 
 void render() {
   glClear(GL_COLOR_BUFFER_BIT);
-  glUseProgram(shaderProgram);
-  //glUniform1f(0, iTime);
-  vbSquare.draw();
 
-  //vbQuad.draw();
+  pQuad.setupDraw(iTime);
+  vbQuad.draw();
+
+  pSun.setupDraw(0.0f);
+  vbSquare.draw();
 }
 
 void reportError(GLenum, GLenum, GLuint, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
