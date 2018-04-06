@@ -30,38 +30,63 @@ static float vsQuad[] = {
   -1.0f,  1.0f, 1.0f,
 };
 
+static float vsUnitUvs[] = {
+   1.0f, -1.0f,
+   1.0f,  1.0f,
+  -1.0f, -1.0f,
+  -1.0f,  1.0f,
+};
 
-
-
-
+static float vsSquare[] = {
+   1.0f, -1.0f, 1.0f,
+   1.0f,  1.0f, 1.0f,
+  -1.0f, -1.0f, 1.0f,
+  -1.0f,  1.0f, 1.0f,
+};
 
 struct VertexBuffer {
-  unsigned int vbo;
+  unsigned int vboPos;
+  unsigned int vboUv;
   unsigned int vao;
-  size_t size;
+  size_t posSize;
+  size_t uvSize;
   GLenum mode;
 
   VertexBuffer() {}
 
-  VertexBuffer(float* begin, float* end, GLenum mode_) {
+  VertexBuffer(float* posBegin, float* posEnd, float* uvBegin, float* uvEnd, GLenum mode_) {
     mode = mode_;
-    size = end - begin;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, size, begin, GL_STATIC_DRAW);
-
+    posSize = posEnd - posBegin;
+    uvSize = uvEnd - uvBegin;
+    glGenBuffers(1, &vboPos);
+    glGenBuffers(1, &vboUv);
     glGenVertexArrays(1, &vao);
-    printf("vbo: %i vao: %i size: %zu\n", vbo, vao, size);
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, size * sizeof(float), begin, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, vboPos);
+    glBufferData(GL_ARRAY_BUFFER, posSize * sizeof(float), posBegin, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboUv);
+    glBufferData(GL_ARRAY_BUFFER, uvSize * sizeof(float), uvBegin, GL_STATIC_DRAW);
 
     glBindVertexArray(vao);
+
     glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboPos);
     glVertexAttribPointer(
       0, // Attribute index
       3, // Elements per vertex
+      GL_FLOAT,
+      GL_FALSE, // Normalized
+      0, // Stride: tightly packed
+      nullptr
+    );
+
+    glBindBuffer(GL_ARRAY_BUFFER, vboUv);
+    glVertexAttribPointer(
+      1, // Attribute index
+      2, // Elements per vertex
       GL_FLOAT,
       GL_FALSE, // Normalized
       0, // Stride: tightly packed
@@ -71,7 +96,7 @@ struct VertexBuffer {
 
   void draw() const {
     glBindVertexArray(vao);
-    glDrawArrays(mode, 0, size);
+    glDrawArrays(mode, 0, posSize / 3);
   }
 };
 
@@ -104,17 +129,19 @@ struct Program {
 };
 
 
-static Program quadProgram;
-static Program gridProgram;
-static VertexBuffer vbTriangle;
+static Program pQuad;
+static Program pSun;
 static VertexBuffer vbQuad;
+static VertexBuffer vbSquare;
 
 
-static const char* vertexShaderSource = R"(
+static const char* vertexShaderRoad = R"(
 #version 420
 #extension GL_ARB_explicit_uniform_location : enable
 layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aUv;
 layout (location = 0) uniform float iTime;
+
 out vec2 uv;
 
 
@@ -133,11 +160,45 @@ void main()
   vec4 pos = rot * trans * vec4(aPos, 1.0);
 
   gl_Position = vec4(pos.xy,  1-pos.z, pos.z);
-  uv = aPos.xy;
+  uv = aUv;
 }
 )";
 
-static const char* fragmentShaderSource = R"(
+
+
+static const char* vertexShaderUv = R"(
+#version 420
+#extension GL_ARB_explicit_uniform_location : enable
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aUv;
+layout (location = 0) uniform float iTime;
+
+out vec2 uv;
+
+
+void main()
+{
+    gl_Position = vec4(aPos.xyz, 1.0);
+    uv = aUv;
+}
+)";
+
+static const char* fragmentShaderSun = R"(
+#version 420
+#extension GL_ARB_explicit_uniform_location : enable
+in vec2 uv;
+out vec4 FragColor;
+
+layout (location = 0) uniform float iTime;
+
+void main() {
+  float r = dot(uv, uv);
+  if (r > 1.0f) discard;
+  FragColor = vec4(1.0f, 0.6f + 0.3f * uv.y, 0.1f, 1.0f);
+}
+)";
+
+static const char* fragmentShaderQuad = R"(
 #version 420
 #extension GL_ARB_explicit_uniform_location : enable
 in vec2 uv;
@@ -167,10 +228,10 @@ float vhs() {
   h = merge(h, floatBitsToUint(iTime));
   h = merge(h, floatBitsToUint(uv.x));
   h = merge(h, floatBitsToUint(uv.y));
-  highp float p = uintToFloat(h);
+  float p = uintToFloat(h);
   float w = sin(uv.y * 3.0 + iTime * 2) * 0.2 + 0.8;
   p = w * p + (1.0 - w);
-  float k = 0.8 + 0.2 * fract(uv.y * 72);
+  float k = 0.8 + 0.2 * fract(uv.y * 144);
   return p * k;
 }
 
@@ -182,24 +243,44 @@ void main() {
 }
 )";
 
-
-
 void setup() {
   glEnable(GL_DEPTH_TEST);
-  quadProgram = Program(vertexShaderSource, fragmentShaderSource);
-  vbTriangle = VertexBuffer(std::begin(vertices), std::end(vertices), GL_TRIANGLE_STRIP);
-  vbQuad = VertexBuffer(std::begin(vsQuad), std::end(vsQuad), GL_TRIANGLE_STRIP);
+  pQuad = Program(vertexShaderRoad, fragmentShaderQuad);
+  printf("pQuad\n");
+  pSun = Program(vertexShaderUv, fragmentShaderSun);
+  printf("pSun\n");
+
+  // Make the square really a square, correct for aspect ratio.
+  const float aspectRatio = 9.0f / 16.0;
+  vsSquare[0 * 3] *= aspectRatio;
+  vsSquare[1 * 3] *= aspectRatio;
+  vsSquare[2 * 3] *= aspectRatio;
+  vsSquare[3 * 3] *= aspectRatio;
+  // Make the square a bit smaller.
+  for (float& x : vsSquare) x *= 0.7;
+
+  vbQuad = VertexBuffer(
+    std::begin(vsQuad), std::end(vsQuad),
+    std::begin(vsUnitUvs), std::end(vsUnitUvs),
+    GL_TRIANGLE_STRIP
+  );
+  vbSquare = VertexBuffer(
+    std::begin(vsSquare), std::end(vsSquare),
+    std::begin(vsUnitUvs), std::end(vsUnitUvs),
+    GL_TRIANGLE_STRIP
+  );
 }
 
 float iTime = 0.0;
 
 void render() {
-  glClear(GL_COLOR_BUFFER_BIT);
-  glClear(GL_DEPTH_BUFFER_BIT);
-  quadProgram.setupDraw(iTime);
-  vbTriangle.draw();
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  pQuad.setupDraw(iTime);
+  printf("yo\n");
   vbQuad.draw();
-  iTime += 0.01;
+  pSun.setupDraw(0.0f);
+  vbSquare.draw();
+  printf("yo2\n");
 }
 
 void reportError(GLenum, GLenum, GLuint, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
