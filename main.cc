@@ -133,6 +133,7 @@ static Program pSun;
 static Program pScreen;
 static VertexBuffer vbQuad;
 static VertexBuffer vbSquare;
+static VertexBuffer vbGrid;
 
 static unsigned int depthbuffer;
 static unsigned int framebuffer;
@@ -304,6 +305,43 @@ void setup(int width, int height) {
     std::begin(vsUnitUvs), std::end(vsUnitUvs),
     GL_TRIANGLE_STRIP
   );
+
+  int gx = 12;
+  int gy = 12;
+
+  float* vsGrid = new float[gx * gy * 6 * 3];
+  float* vsGridUvs = new float[gx * gy * 6 * 2];
+
+  for (int y = 0; y < gy; y++) {
+    float py0 = y * (1.0 / gy) * 2.0 - 1.0;
+    float py1 = (y + 1) * (1.0 / gy) * 2.0 - 1.0;
+    for (int x = 0; x < gx; x++) {
+      float* grid = vsGrid + ((y * gx + x) * 6 * 3);
+      float px0 = x * (1.0 / gx) * 2.0 - 1.0;
+      float px1 = (x + 1) * (1.0 / gx) * 2.0 - 1.0;
+      grid[0]  =  px1; grid[1]  = py0; grid[2]  = 1.0f;
+      grid[3]  =  px1; grid[4]  = py1; grid[5]  = 1.0f;
+      grid[6]  =  px0; grid[7]  = py0; grid[8]  = 1.0f;
+      grid[9]  =  px1; grid[10] = py1; grid[11] = 1.0f;
+      grid[12] =  px0; grid[13] = py0; grid[14] = 1.0f;
+      grid[15] =  px0; grid[16] = py1; grid[17] = 1.0f;
+    }
+  }
+  for (int y = 0; y < gy; y++) {
+    for (int x = 0; x < gx; x++) {
+      int k = y * gx + x * 6;
+      for (int z = 0; z < 6; z++) {
+        vsGridUvs[(k + z) * 2 + 0] = vsGrid[(k + z) * 3 + 0];
+        vsGridUvs[(k + z) * 2 + 1] = vsGrid[(k + z) * 3 + 1];
+      }
+    }
+  }
+
+  vbGrid = VertexBuffer(
+    vsGrid, vsGrid + (gx * gy * 6 * 3),
+    vsGridUvs, vsGridUvs + (gx * gy * 6 * 2),
+    GL_TRIANGLES
+  );
 }
 
 float iTime = 0.0;
@@ -316,7 +354,9 @@ void render(int width, int height) {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   pQuad.setupDraw(iTime);
-  vbQuad.draw();
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  vbGrid.draw();
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
   pSun.setupDraw(0.0f);
   vbSquare.draw();
