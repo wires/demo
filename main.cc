@@ -246,9 +246,9 @@ float vhs() {
   h = merge(h, floatBitsToUint(uv.x));
   h = merge(h, floatBitsToUint(uv.y));
   float p = uintToFloat(h);
-  float w = sin(uv.y * 3.0 + iTime * 2) * 0.2 + 0.8;
+  float w = sin(uv.y * 3.0 + iTime * 2) * 0.9 + 0.8;
   p = w * p + (1.0 - w);
-  float k = 0.8 + 0.2 * fract(uv.y * 72);
+  float k = 0.8 + 0.2 * fract(uv.y * 64);
   return p * k;
 }
 
@@ -260,9 +260,9 @@ void main() {
   vec3 color = vec3(cr, cg, cb);
   color += vec3(0.1, 0.0, 0.3);
   float v = vhs();
-  color *= v;
+  //color *= v;
   color *= vec3(0.97, 0.9, 1.0);
-  color += vec3(0.3f, 0.05f, 0.2f) * v;
+  color += vec3(0.7f, 0.05f, 0.2f) * v;
   FragColor = vec4(color, 1.0);
 }
 )";
