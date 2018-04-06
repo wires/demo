@@ -253,7 +253,11 @@ float vhs() {
 }
 
 void main() {
-  vec3 color = texture(screenTexture, uv * 0.5 + vec2(0.5)).rgb;
+  float dx = 0.003;
+  float cr = texture(screenTexture, uv * 0.5 + vec2(0.5) + vec2(dx, 0.0)).r;
+  float cg = texture(screenTexture, uv * 0.5 + vec2(0.5)).g;
+  float cb = texture(screenTexture, uv * 0.5 + vec2(0.5) + vec2(-dx, 0.0)).b;
+  vec3 color = vec3(cr, cg, cb);
   color += vec3(0.1, 0.0, 0.3);
   float v = vhs();
   color *= v;
