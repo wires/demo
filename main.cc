@@ -222,6 +222,7 @@ float vhs() {
 
 void main() {
   vec3 color = texture(screenTexture, uv * 0.5 + vec2(0.5)).rgb;
+  color += vec3(0.1, 0.0, 0.3);
   color *= vhs();
   color *= vec3(0.97, 0.9, 1.0);
   FragColor = vec4(color, 1.0);
