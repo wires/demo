@@ -188,7 +188,7 @@ float mountainAndRoad(vec3 p) {
 
 void main()
 {
-  float a = -1.5;
+  float a = -1.7;
   mat4 rot = mat4(1.0, 0.0,        0.0, 0.0,
                   0.0, cos(a), -sin(a), 0.0,
                   0.0, sin(a),  cos(a), 0.0,
