@@ -196,6 +196,8 @@ layout (location = 0) uniform float iTime;
 void main() {
   float r = dot(uv, uv);
   if (r > 1.0f) discard;
+  if (fract(uv.y * (15.0f + 7.5f * sin(uv.y))) < 0.5f) discard;
+  if (uv.y < -0.5f) discard;
   FragColor = vec4(1.0f, 0.6f + 0.3f * uv.y, 0.1f, 1.0f);
 }
 )";
