@@ -122,9 +122,8 @@ struct Program {
     glLinkProgram(shaderProgram);
   }
 
-  void setupDraw(float iTime) const {
+  void setupDraw() const {
     glUseProgram(shaderProgram);
-    glUniform1f(0, iTime);
   }
 };
 
@@ -145,6 +144,7 @@ static const char* vertexShaderRoad = R"(
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aUv;
 layout (location = 0) uniform float iTime;
+layout (location = 1) uniform float iOff;
 
 out vec2 uv;
 
@@ -152,18 +152,20 @@ out vec2 uv;
 void main()
 {
   float a = -1.5;
-  mat4 rot = mat4(1.0,0.0,0.0,0.0,
-                  0.0,cos(a),-sin(a),0.0,
-                  0.0,sin(a), cos(a),0.0,
-                  0.0,0.0,0.0,1.0);
+  mat4 rot = mat4(1.0, 0.0,        0.0, 0.0,
+                  0.0, cos(a), -sin(a), 0.0,
+                  0.0, sin(a),  cos(a), 0.0,
+                  0.0, 0.0,        0.0, 1.0);
 
-  mat4 trans = mat4(1.0,0.0,0.0,0.0,
-                    0.0,1.0,0.0,0.0,
-                    0.0,0.0,1.0,0.0,
-                    0.0,5.0 *-fract(iTime) + 4.0,0.0,1.0);
+  float dy = iOff - fract(iTime);
+
+  mat4 trans = mat4(1.0, 0.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0, 0.0,
+                    0.0, 0.0, 1.0, 0.0,
+                    0.0,  dy, 0.0, 1.0);
   vec4 pos = rot * trans * vec4(aPos, 1.0);
 
-  gl_Position = vec4(pos.xy,  1-pos.z, pos.z);
+  gl_Position = vec4(pos.xy, 1 - pos.z, pos.z);
   uv = aUv;
 }
 )";
@@ -359,19 +361,25 @@ void render(int width, int height) {
   glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  pGrid.setupDraw(iTime);
+  pGrid.setupDraw();
+  glUniform1f(0, iTime);
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  vbGrid.draw();
+
+  for (int k = 0; k < 22; k += 2) {
+    glUniform1f(1, static_cast<float>(k)); // iOff
+    vbGrid.draw();
+  }
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-  pSun.setupDraw(0.0f);
+  pSun.setupDraw();
   vbSquare.draw();
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glDisable(GL_DEPTH_TEST);
   glViewport(0, 0, width, height);
 
-  pScreen.setupDraw(iTime);
+  pScreen.setupDraw();
+  glUniform1f(0, iTime);
   vbQuad.draw();
 }
 
