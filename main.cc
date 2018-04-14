@@ -144,7 +144,7 @@ static const char* vertexShaderRoad = R"(
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aUv;
 layout (location = 0) uniform float iTime;
-layout (location = 1) uniform float iOff;
+layout (location = 1) uniform vec2 iOff;
 
 out vec2 uv;
 
@@ -189,7 +189,8 @@ void main()
                   0.0, sin(a),  cos(a), 0.0,
                   0.0, 0.0,        0.0, 1.0);
   vec3 pos = aPos;
-  pos.y += iOff - fract(iTime);
+  pos.xy += iOff;
+  pos.y -= fract(iTime);
   pos.z += noise(pos);
   vec4 fpos = rot * vec4(pos, 1.0);
   gl_Position = vec4(fpos.xy, 1 - fpos.z, fpos.z);
@@ -392,9 +393,11 @@ void render(int width, int height) {
   glUniform1f(0, iTime);
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-  for (int k = 0; k < 22; k += 2) {
-    glUniform1f(1, static_cast<float>(k)); // iOff
-    vbGrid.draw();
+  for (int m = -4; m <= 4; m += 2) {
+    for (int k = 0; k < 22; k += 2) {
+      glUniform2f(1, (float)m, (float)k); // iOff
+      vbGrid.draw();
+    }
   }
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
