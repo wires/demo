@@ -179,7 +179,13 @@ float noise(vec3 p){
     return o4.y * d.y + o4.x * (1.0 - d.y);
 }
 
-
+float mountainAndRoad(vec3 p) {
+  if (p.x < -0.25 || p.x > 0.25) {
+    return noise(p);
+  } else {
+    return 0.4;
+  }
+}
 
 void main()
 {
@@ -190,7 +196,7 @@ void main()
                   0.0, 0.0,        0.0, 1.0);
   vec3 pos = aPos;
   pos.y += iOff - fract(iTime);
-  pos.z += noise(pos);
+  pos.z -= mountainAndRoad(pos);
   vec4 fpos = rot * vec4(pos, 1.0);
   gl_Position = vec4(fpos.xy, 1 - fpos.z, fpos.z);
   uv = aUv;
