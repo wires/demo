@@ -180,7 +180,7 @@ float noise(vec3 p){
 }
 
 float mountainAndRoad(vec3 p) {
-  float n = (noise(p) * 3.0f - 1.0f) * cos(p.x);
+  float n = (noise(p - vec3(iTime * 0.5, -iTime * 0.7, 0.0f)) * 3.0f - 1.0f) * cos(p.x);
   float h = 0.6f;
   float t = min(1.0f, pow(p.x, 4));
   return t * n + (1.0f - t) * h;
