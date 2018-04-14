@@ -194,7 +194,7 @@ void main()
   pos.z += noise(pos);
   vec4 fpos = rot * vec4(pos, 1.0);
   gl_Position = vec4(fpos.xy, 1 - fpos.z, fpos.z);
-  uv = aUv;
+  uv = pos.xy;
 }
 )";
 
@@ -242,7 +242,8 @@ layout (location = 0) uniform float iTime;
 
 void main() {
     vec3 color = vec3(0.8f, 0.8f, 0.8f);
-    FragColor = vec4(color.rgb, 1.0f);
+    float d = 1.0f - uv.y * 0.12;
+    FragColor = vec4(color.rgb * d, 1.0f);
 }
 )";
 
@@ -365,7 +366,7 @@ void setup(int width, int height) {
   }
   for (int y = 0; y < gy; y++) {
     for (int x = 0; x < gx; x++) {
-      int k = y * gx + x * 6;
+      int k = (y * gx + x) * 6;
       for (int z = 0; z < 6; z++) {
         vsGridUvs[(k + z) * 2 + 0] = vsGrid[(k + z) * 3 + 0];
         vsGridUvs[(k + z) * 2 + 1] = vsGrid[(k + z) * 3 + 1];
@@ -389,9 +390,14 @@ void render(int width, int height) {
   glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+  pSun.setupDraw();
+  vbSquare.draw();
+
   pGrid.setupDraw();
   glUniform1f(0, iTime);
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
   for (int m = -4; m <= 4; m += 2) {
     for (int k = 0; k < 22; k += 2) {
@@ -400,9 +406,7 @@ void render(int width, int height) {
     }
   }
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-  pSun.setupDraw();
-  vbSquare.draw();
+  glDisable(GL_BLEND);
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glDisable(GL_DEPTH_TEST);
