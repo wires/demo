@@ -180,11 +180,10 @@ float noise(vec3 p){
 }
 
 float mountainAndRoad(vec3 p) {
-  if (p.x < -0.25 || p.x > 0.25) {
-    return noise(p);
-  } else {
-    return 0.4;
-  }
+  float n = (noise(p) * 3.0f - 1.0f) * cos(p.x);
+  float h = 0.6f;
+  float t = min(1.0f, pow(p.x, 4));
+  return t * n + (1.0f - t) * h;
 }
 
 void main()
