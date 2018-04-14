@@ -298,9 +298,8 @@ void main() {
   vec3 color = vec3(cr, cg, cb);
   color += vec3(0.1, 0.0, 0.3);
   float v = vhs();
-  //color *= v;
   color *= vec3(0.97, 0.9, 1.0);
-  color += vec3(0.7f, 0.05f, 0.2f) * v;
+  color += vec3(0.35f, 0.05f, 0.1f) * v;
   FragColor = vec4(color, 1.0);
 }
 )";
