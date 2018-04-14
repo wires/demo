@@ -128,7 +128,7 @@ struct Program {
   }
 };
 
-static Program pQuad;
+static Program pGrid;
 static Program pSun;
 static Program pScreen;
 static VertexBuffer vbQuad;
@@ -270,7 +270,7 @@ void main() {
 )";
 
 void setup(int width, int height) {
-  pQuad = Program(vertexShaderRoad, fragmentShaderQuad);
+  pGrid = Program(vertexShaderRoad, fragmentShaderQuad);
   pSun = Program(vertexShaderUv, fragmentShaderSun);
   pScreen = Program(vertexShaderUv, fragmentShaderScreen);
 
@@ -359,7 +359,7 @@ void render(int width, int height) {
   glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  pQuad.setupDraw(iTime);
+  pGrid.setupDraw(iTime);
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   vbGrid.draw();
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
