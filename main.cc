@@ -399,7 +399,7 @@ void render(int width, int height) {
 
   pGrid.setupDraw();
   glUniform1f(0, iTime);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+//  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
@@ -427,8 +427,22 @@ void reportError(GLenum, GLenum, GLuint, GLenum severity, GLsizei length, const 
   if (severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM) abort();
 }
 
+GLFWwindow* window;
+int width, height;
+
+void loop() {
+  //while (!glfwWindowShouldClose(window)) {
+    render(width, height);
+    iTime += 0.01;
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+  //}
+}
+
+#include <emscripten.h>
+
+
 int main(int argc, char** argv) {
-  GLFWwindow* window;
 
   if (!glfwInit()) return -2;
 
@@ -442,8 +456,8 @@ int main(int argc, char** argv) {
 
   glfwMakeContextCurrent(window);
 
-  glDebugMessageCallback(reportError, nullptr);
-  glEnable(GL_DEBUG_OUTPUT);
+	//glDebugMessageCallback(reportError, nullptr);
+  //glEnable(GL_DEBUG_OUTPUT);
 
   // Set viewport size to window size * scaling, to fix HiDPI. The framebuffer
   // size should be the right size, adjusted for scaling, but unfortunately it
@@ -454,24 +468,23 @@ int main(int argc, char** argv) {
   // screen coordinates, so this *should* work for HiDPI, but it does not. See
   // also https://github.com/glfw/glfw/issues/1168. So we just scale if provided
   // as a command line flag.
-  int width, height;
   glfwGetFramebufferSize(window, &width, &height);
   if (argc == 2 && !strcmp(argv[1], "--hidpi")) {
     width *= 2;
     height *= 2;
   }
 
+  emscripten_set_main_loop (loop, 0, true);
+  
+
   // Enable vsync. I think.
   glfwSwapInterval(1);
 
   setup(width, height);
 
-  while (!glfwWindowShouldClose(window)) {
-    render(width, height);
-    iTime += 0.01;
-    glfwSwapBuffers(window);
-    glfwPollEvents();
-  }
-
   return 0;
 }
+
+
+
+
